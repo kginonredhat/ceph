@@ -418,6 +418,14 @@ class TestCephadm(object):
             assert {d.name() for d in dds} == {'rgw.myrgw.foobar', 'haproxy.test.bar'}
 
     @mock.patch("cephadm.serve.CephadmServe._run_cephadm", _run_cephadm('[]'))
+    def test_daemon_action_set_image_rejects_cli_flag(
+        self, cephadm_module: CephadmOrchestrator
+    ) -> None:
+        for bad in ('--force', '-f', '--image', 'not/valid/space ref'):
+            with pytest.raises(OrchestratorError, match='not a valid container image reference'):
+                cephadm_module._daemon_action_set_image('redeploy', bad, 'osd', '0')
+
+    @mock.patch("cephadm.serve.CephadmServe._run_cephadm", _run_cephadm('[]'))
     def test_daemon_action(self, cephadm_module: CephadmOrchestrator):
         cephadm_module.service_cache_timeout = 10
         with with_host(cephadm_module, 'test'):

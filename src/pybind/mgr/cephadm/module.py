@@ -135,6 +135,32 @@ os._exit = os_exit_noop   # type: ignore
 
 DEFAULT_IMAGE = 'quay.io/ceph/ceph'
 
+# Component patterns loosely following the OCI distribution spec.
+# Catches malformed input; not a full OCI distribution spec parser.
+_NAME_COMPONENT = r'[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*'
+_TAG = r'[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}'
+_DIGEST = r'sha256:[a-fA-F0-9]{64}'
+_REGISTRY = r'(?:[a-zA-Z0-9.-]+(?::[0-9]+)?)'
+
+_IMAGE_RE = re.compile(
+    rf"""
+    ^
+    (?:{_REGISTRY}/)?
+    {_NAME_COMPONENT}(?:/{_NAME_COMPONENT})*
+    (?::{_TAG})?
+    (?:@{_DIGEST})?
+    $
+    """,
+    re.VERBOSE | re.ASCII,
+)
+
+
+def is_valid_container_image_ref(ref: str) -> bool:
+    """Basic sanity check for a container image reference from any registry.
+    Catches flag-shaped strings (e.g. ``--force``, ``-i``) and obvious junk.
+    Not a full OCI distribution spec implementation."""
+    return _IMAGE_RE.fullmatch(ref) is not None
+
 
 def host_exists(hostname_position: int = 1) -> Callable:
     """Check that a hostname exists in the inventory"""
@@ -2722,6 +2748,9 @@ Then run the following:
                 raise OrchestratorError(
                     f'Cannot redeploy {daemon_type}.{daemon_id} with a new image: Supported '
                     f'types are: {", ".join(CEPH_IMAGE_TYPES)}')
+            if not is_valid_container_image_ref(image):
+                raise OrchestratorError(
+                    f'Invalid container image {image!r} (not a valid container image reference)')
 
             self.check_mon_command({
                 'prefix': 'config set',

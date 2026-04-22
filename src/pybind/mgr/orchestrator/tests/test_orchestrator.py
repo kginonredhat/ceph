@@ -17,6 +17,7 @@ from test_orchestrator import TestOrchestrator as _TestOrchestrator
 from orchestrator import InventoryHost, DaemonDescription, ServiceDescription, DaemonDescriptionStatus, OrchResult
 from orchestrator import OrchestratorValidationError
 from orchestrator.module import to_format, Format, OrchestratorCli, preview_table_osd
+from orchestrator.cli import OrchestratorCLICommand
 from unittest import mock
 
 
@@ -144,6 +145,36 @@ def test_handle_command():
     r = m._handle_command(None, cmd)
     assert r == HandleCommandResult(
         retval=-2, stdout='', stderr='No orchestrator configured (try `ceph orch set backend`)')
+
+
+@mock.patch.object(OrchestratorCli, 'daemon_action', return_value=OrchResult('ok'))
+def test_orch_daemon_redeploy_literal_force_not_used_as_image(mock_da: mock.MagicMock) -> None:
+    # The monitor used to pass the second positional as image; redeploy with
+    # --force became image=--force and wrote it as container_image.
+    m = OrchestratorCli('orchestrator', 0, 0)
+    r = OrchestratorCLICommand.COMMANDS['orch daemon redeploy'].call(
+        m, {'name': 'osd.0', 'image': '--force'}
+    )
+    assert r.retval == 0
+    assert r.stdout == 'ok'
+    mock_da.assert_called_once_with('redeploy', 'osd.0', image=None, force=True)
+
+
+@mock.patch.object(OrchestratorCli, 'daemon_action', return_value=OrchResult('ok'))
+def test_orch_daemon_redeploy_force_flag_parsed_separately(mock_da: mock.MagicMock) -> None:
+    m = OrchestratorCli('orchestrator', 0, 0)
+    r = OrchestratorCLICommand.COMMANDS['orch daemon redeploy'].call(
+        m, {
+            'name': 'osd.0',
+            'force': True,
+            'image': 'quay.io/ceph/ceph:foo@sha256:ab',
+        }
+    )
+    assert r.retval == 0
+    assert r.stdout == 'ok'
+    mock_da.assert_called_once_with(
+        'redeploy', 'osd.0', image='quay.io/ceph/ceph:foo@sha256:ab', force=True
+    )
 
 
 r = OrchResult([ServiceDescription(spec=ServiceSpec(service_type='osd'), running=123)])

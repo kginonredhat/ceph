@@ -1791,11 +1791,18 @@ Usage:
     @OrchestratorCLICommand.Write('orch daemon redeploy')
     def _daemon_action_redeploy(self,
                                 name: str,
-                                image: Optional[str] = None) -> HandleCommandResult:
+                                image: Optional[str] = None,
+                                force: bool = False) -> HandleCommandResult:
         """Redeploy a daemon (with a specific image)"""
         if '.' not in name:
             raise OrchestratorError('%s is not a valid daemon name' % name)
-        completion = self.daemon_action("redeploy", name, image=image)
+        # The optional second positional "image" could receive the literal "--force"
+        # and incorrectly set container_image. The `force` parameter and this guard
+        # map `ceph ... redeploy <daemon> --force` to a bool instead of an image.
+        if image in ('--force', '-f'):
+            image = None
+            force = True
+        completion = self.daemon_action("redeploy", name, image=image, force=force)
         raise_if_exception(completion)
         return HandleCommandResult(stdout=completion.result_str())
 
