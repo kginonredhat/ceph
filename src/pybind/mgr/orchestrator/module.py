@@ -1791,11 +1791,13 @@ Usage:
     @OrchestratorCLICommand.Write('orch daemon redeploy')
     def _daemon_action_redeploy(self,
                                 name: str,
+                                force: bool = False,
                                 image: Optional[str] = None) -> HandleCommandResult:
         """Redeploy a daemon (with a specific image)"""
         if '.' not in name:
             raise OrchestratorError('%s is not a valid daemon name' % name)
-        completion = self.daemon_action("redeploy", name, image=image)
+        completion = self.daemon_action(
+            "redeploy", name, image=image, force=force)
         raise_if_exception(completion)
         return HandleCommandResult(stdout=completion.result_str())
 
