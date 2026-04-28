@@ -104,6 +104,15 @@ class TestCommandListNetworks:
                 '172.21.3.1/32': {'tun0': {'172.21.3.2'}},
                 '192.168.122.0/24': {'virbr0': {'192.168.122.1'}}
             }
+        ), (
+            dedent("""
+            10.1.0.40 dev dummy0 proto kernel scope host src 10.1.0.40
+            10.123.166.0/24 dev bond0 proto kernel scope link src 10.123.166.1
+            """),
+            {
+                '10.1.0.40/32': {'dummy0': {'10.1.0.40'}},
+                '10.123.166.0/24': {'bond0': {'10.123.166.1'}},
+            }
         ),
     ])
     def test_parse_ipv4_route(self, test_input, expected):
