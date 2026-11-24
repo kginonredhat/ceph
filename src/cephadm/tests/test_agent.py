@@ -642,6 +642,8 @@ def test_agent_run(_time, _pull_conf_settings, _port_in_use, _gatherer_start,
     }
 
     class FakeHTTPResponse():
+        status = 200
+
         def __init__(self):
             pass
 
@@ -708,8 +710,8 @@ def test_agent_run(_time, _pull_conf_settings, _port_in_use, _gatherer_start,
         }
         _RQ_init.assert_called_with(
             f'https://{target_ip}:{target_port}/data',
-            json.dumps(expected_data).encode('ascii'),
-            {
+            data=json.dumps(expected_data).encode('ascii'),
+            headers={
                 'X-Cephadm-Agent-Sent-At': '1234.5',
                 'Content-Type': 'application/json',
             }
