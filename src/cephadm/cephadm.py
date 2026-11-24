@@ -1693,6 +1693,15 @@ class CephadmAgent(DaemonForm):
         self.ls_gatherer = AgentGatherer(self, lambda: self._get_ls(), 'Ls')
         self.volume_gatherer = AgentGatherer(self, lambda: self._ceph_volume(enhanced=False), 'Volume')
         self.device_enhanced_scan = False
+        # Defaults for the agent.json fields read by pull_conf_settings().
+        # agent.json files written by an older mgr do not contain the newer
+        # fields; these values keep the behavior of agents that predate them
+        # (no compression, no startup delay, no jitter, a 10 s reply wait)
+        # until the current config and the first mgr reply replace them.
+        self.metadata_compresion_enabled = False
+        self.initial_startup_delay_max = 0
+        self.jitter_seconds = 0
+        self.report_timeout = 10
         self.recent_iteration_run_times: List[float] = [0.0, 0.0, 0.0]
         self.recent_iteration_index: int = 0
         self.cached_ls_values: Dict[str, Dict[str, str]] = {}
@@ -1803,7 +1812,10 @@ class CephadmAgent(DaemonForm):
                 self.metadata_compresion_enabled = bool(config.get('metadata_compresion_enabled', False))
                 self.initial_startup_delay_max = int(config.get('initial_startup_delay_max', 0))
                 self.jitter_seconds = int(config.get('jitter_seconds', 0))
-                self.report_timeout = int(config['report_timeout'])
+                # agent.json written by an older mgr has no report timeout:
+                # fall back to the fixed reply wait such agents were built
+                # with instead of failing to start.
+                self.report_timeout = int(config.get('report_timeout', 10))
                 self.host = config['host']
                 # Older agent.json files do not contain this field. Keep the
                 # existing image inference fallback for upgrade compatibility.

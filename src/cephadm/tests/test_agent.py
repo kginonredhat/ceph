@@ -290,6 +290,41 @@ def test_pull_conf_settings(_update_func, _shutdown, cephadm_fs):
             agent.pull_conf_settings()
 
 
+@mock.patch("cephadm.CephadmAgent.shutdown")
+@mock.patch("cephadm.AgentGatherer.update_func")
+def test_pull_conf_settings_older_config(_update_func, _shutdown, cephadm_fs):
+    # agent.json as written by an older mgr: no compression flag, no startup
+    # delay, no jitter and no report timeout. The agent must start with the
+    # pre-pacing behavior instead of failing on the missing fields.
+    with with_cephadm_ctx([]) as ctx:
+        agent = _cephadm.CephadmAgent(ctx, FSID, AGENT_ID)
+        assert agent.metadata_compresion_enabled is False
+        assert agent.initial_startup_delay_max == 0
+        assert agent.jitter_seconds == 0
+        assert agent.report_timeout == 10
+
+        older_config = {
+            'target_ip': '192.168.0.0',
+            'target_port': 9876,
+            'refresh_period': 20,
+            'listener_port': 5678,
+            'host': AGENT_ID,
+            'device_enhanced_scan': 'False',
+        }
+        cephadm_fs.create_dir(AGENT_DIR)
+        with open(agent.config_path, 'w') as f:
+            f.write(json.dumps(older_config))
+        with open(agent.keyring_path, 'w') as f:
+            f.write('keyring')
+
+        agent.pull_conf_settings()
+
+        assert agent.report_timeout == 10
+        assert agent.jitter_seconds == 0
+        assert agent.initial_startup_delay_max == 0
+        _shutdown.assert_not_called()
+
+
 @mock.patch("cephadm.command_ceph_volume")
 def test_agent_ceph_volume(_ceph_volume):
 
